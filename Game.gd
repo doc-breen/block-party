@@ -1,5 +1,6 @@
 extends Node2D
 
+
 onready var game_timer:= $GameTimer
 const SCREEN_WIDTH = 350
 const SCREEN_HEIGHT = 800
@@ -7,6 +8,7 @@ const SCREEN_BUFFER = 30
 var level: int = 1
 var per_level_quant: int = 2
 const Block = preload("res://Block.tscn")
+const Particle_FX = preload("res://ParticleFX.tscn")
 var block_array:= []
 signal wipe_blocks
 onready var timer_label:= $Control/HBoxContainer/TimeCount
@@ -25,7 +27,6 @@ func _ready():
 
 func _process(_delta):
 	timer_label.text = String(int(game_timer.time_left)+1)
-	
 	level_label.text = String(level)
 
 
@@ -44,29 +45,39 @@ func level_up() -> void:
 		level += 1
 		new_block_wave(level)
 		game_timer.start(5)
+		yield(get_tree().create_timer(.15),"timeout")
 		# Reset pitch
 		bing_sound.pitch_scale = 1.0
+
+
+func particles(pos: Vector2, col: Color) -> void:
+	var particle_fx:= Particle_FX.instance()
+	particle_fx.position = pos
+	particle_fx.modulate = col
+	add_child(particle_fx)
+	particle_fx.emitting = true
+	# Play sound and increase pitch
+	bing_sound.play()
+	bing_sound.pitch_scale += 0.07
 
 
 func on_block_dropped():
 	# Remove block from array
 	block_array.pop_back()
-	# Play sound and increase pitch
-	bing_sound.play()
-	bing_sound.pitch_scale += 0.05
 	# Level up when all blocks are wiped
 	if block_array == []:
-		yield(get_tree().create_timer(.25),"timeout")
 		level_up()
 	
 
 func _on_GameTimer_timeout():
-	loss_sound.play()
 	# end game
+	loss_sound.play()
 	emit_signal("wipe_blocks")
+	
 	timer_label.text = String(0)
 	$Popup/VBoxContainer/VarLabel.text = "Level " + String(level)
 	$Popup.popup()
+	yield(get_tree().create_timer(.15),"timeout")
 	get_tree().paused = true
 
 
